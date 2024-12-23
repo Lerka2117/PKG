@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Преобразования - Буква Е</title>
+    <style>
+        body { margin: 0; background-color: #000000; }
+        canvas { display: block; }
+        .controls { 
+            position: fixed; 
+            top: 10px; 
+            left: 10px; 
+            background: rgba(255, 255, 255, 0.8); 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        button { margin: 5px 0; }
+        #matrixDisplay { 
+            position: fixed; 
+            top: 300px; 
+            left: 10px; 
+            font-family: monospace; 
+            color: #fff; 
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="scaleModel(1.1)">Увеличить</button>
+        <button onclick="scaleModel(0.9)">Уменьшить</button>
+        <button onclick="moveModel(0.1, 0, 0)">Сдвинуть вправо</button>
+        <button onclick="moveModel(-0.1, 0, 0)">Сдвинуть влево</button>
+        <button onclick="setCamera('perspective')">Перспективный вид</button>
+        <button onclick="setCamera('Oxy')">Проекция Oxy</button>
+        <button onclick="setCamera('Oxz')">Проекция Oxz</button>
+        <button onclick="setCamera('Oyz')">Проекция Oyz</button>
+    </div>
+    <pre id="matrixDisplay"></pre> <!-- Элемент для отображения матрицы -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://threejs.org/examples/jsm/loaders/FontLoader.js"></script>
+    <script src="https://threejs.org/examples/jsm/geometries/TextGeometry.js"></script>
+
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000); // Чёрный фон
+        document.body.appendChild(renderer.domElement);
+
+        camera.position.z = 3;
+
+        const frustumSize = 2;
+        const aspect = window.innerWidth / window.innerHeight;
+        const cameraOxy = new THREE.OrthographicCamera(-frustumSize * aspect, frustumSize * aspect, frustumSize, -frustumSize, 0.1, 1000);
+        const cameraOxz = new THREE.OrthographicCamera(-frustumSize * aspect, frustumSize * aspect, frustumSize, -frustumSize, 0.1, 1000);
+        const cameraOyz = new THREE.OrthographicCamera(-frustumSize * aspect, frustumSize * aspect, frustumSize, -frustumSize, 0.1, 1000);
+
+        cameraOxy.position.set(0, 0, 3);
+        cameraOxy.lookAt(0, 0, 0);
+        cameraOxz.position.set(0, 3, 0);
+        cameraOxz.lookAt(0, 0, 0);
+        cameraOyz.position.set(3, 0, 0);
+        cameraOyz.lookAt(0, 0, 0);
+
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 5, 5).normalize();
+        scene.add(directionalLight);
+
+        const group = new THREE.Group();
+        scene.add(group);
+
+        const thickness = 0.25;
+        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+        function createThickLine(start, end) {
+            const length = start.distanceTo(end);
+            const geometry = new THREE.BoxGeometry(thickness, length, thickness);
+            const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(midpoint);
+            mesh.lookAt(end);
+            mesh.rotateX(Math.PI / 2);
+            return mesh;
+        }
+
+        // Вершины для буквы Е
+        const vertices = {
+            leftTop: new THREE.Vector3(-0.5, 1, 0),
+            leftBottom: new THREE.Vector3(-0.5, -1, 0),
+            midLeft: new THREE.Vector3(-0.5, 0, 0),
+            rightTop: new THREE.Vector3(0.5, 1, 0),
+            rightMid: new THREE.Vector3(0.5, 0, 0),
+            rightBottom: new THREE.Vector3(0.5, -1, 0)
+        };
+
+        const leftSide = createThickLine(vertices.leftTop, vertices.leftBottom);
+        const topBar = createThickLine(vertices.leftTop, vertices.rightTop);
+        const midBar = createThickLine(vertices.midLeft, vertices.rightMid);
+        const bottomBar = createThickLine(vertices.leftBottom, vertices.rightBottom);
+        group.add(leftSide, topBar, midBar, bottomBar);
+
+        const axesHelper = new THREE.AxesHelper(1.5);
+        scene.add(axesHelper);
+
+        const loader = new THREE.FontLoader();
+        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+            const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Белый текст
+            const textX = new THREE.TextGeometry('X', { font: font, size: 0.1, height: 0.01 });
+            const textY = new THREE.TextGeometry('Y', { font: font, size: 0.1, height: 0.01 });
+            const textZ = new THREE.TextGeometry('Z', { font: font, size: 0.1, height: 0.01 });
+
+            const meshX = new THREE.Mesh(textX, textMaterial);
+            meshX.position.set(1.6, 0, 0);
+            scene.add(meshX);
+
+            const meshY = new THREE.Mesh(textY, textMaterial);
+            meshY.position.set(0, 1.6, 0);
+            scene.add(meshY);
+
+            const meshZ = new THREE.Mesh(textZ, textMaterial);
+            meshZ.position.set(0, 0, 1.6);
+            scene.add(meshZ);
+        });
+
+        let activeCamera = camera;
+        function setCamera(view) {
+            activeCamera = (view === "perspective") ? camera : (view === "Oxy") ? cameraOxy : (view === "Oxz") ? cameraOxz : cameraOyz;
+        }
+
+        const matrixDisplay = document.getElementById("matrixDisplay");
+
+        function logTransformationMatrix() {
+            const elements = group.matrix.elements;
+            matrixDisplay.textContent = `Матрица преобразования:\n
+                | ${elements[0].toFixed(2)} ${elements[4].toFixed(2)} ${elements[8].toFixed(2)} ${elements[12].toFixed(2)} |\n
+                | ${elements[1].toFixed(2)} ${elements[5].toFixed(2)} ${elements[9].toFixed(2)} ${elements[13].toFixed(2)} |\n
+                | ${elements[2].toFixed(2)} ${elements[6].toFixed(2)} ${elements[10].toFixed(2)} ${elements[14].toFixed(2)} |\n
+                | ${elements[3].toFixed(2)} ${elements[7].toFixed(2)} ${elements[11].toFixed(2)} ${elements[15].toFixed(2)} |`;
+        }
+
+        function scaleModel(scaleFactor) {
+            group.scale.multiplyScalar(scaleFactor);
+            group.updateMatrixWorld(true);
+            logTransformationMatrix();
+        }
+
+        function moveModel(x, y, z) {
+            group.position.x += x;
+            group.position.y += y;
+            group.position.z += z;
+            group.updateMatrixWorld(true);
+            logTransformationMatrix();
+        }
+
+        // Переменные для управления мышью
+        let isMouseDown = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        
+        document.addEventListener("mousedown", (event) => {
+            isMouseDown = true;
+            previousMousePosition.x = event.clientX;
+            previousMousePosition.y = event.clientY;
+        });
+
+        document.addEventListener("mousemove", (event) => {
+            if (isMouseDown) {
+                const deltaX = event.clientX - previousMousePosition.x;
+                const deltaY = event.clientY - previousMousePosition.y;
+
+                group.rotation.y += deltaX * 0.01;
+                group.rotation.x += deltaY * 0.01;
+
+                previousMousePosition.x = event.clientX;
+                previousMousePosition.y = event.clientY;
+
+                logTransformationMatrix();
+            }
+        });
+
+        document.addEventListener("mouseup", () => {
+            isMouseDown = false;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, activeCamera);
+        }
+        animate();
+    </script>
+</body>
+</html>
